@@ -17,10 +17,14 @@ export function AppProvider({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
-  // Load documents on mount
+  // Load documents and sessions on mount, auto-select last active chat
   useEffect(() => {
     refreshDocuments();
-    refreshSessions();
+    refreshSessions().then(sessions => {
+      if (sessions && sessions.length > 0 && !activeChatId) {
+        setActiveChatId(sessions[0].id);
+      }
+    });
   }, []);
 
   // Load messages when active chat changes
@@ -44,9 +48,12 @@ export function AppProvider({ children }) {
   async function refreshSessions() {
     try {
       const data = await listSessions();
-      setChatSessions(data.sessions || []);
+      const sessions = data.sessions || [];
+      setChatSessions(sessions);
+      return sessions;
     } catch (err) {
       console.error('Failed to load sessions:', err);
+      return [];
     }
   }
 

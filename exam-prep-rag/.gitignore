@@ -9,6 +9,7 @@ env/
 # Environment
 .env
 backend/.env
+backend/.env.example
 
 # Build output
 frontend/dist/

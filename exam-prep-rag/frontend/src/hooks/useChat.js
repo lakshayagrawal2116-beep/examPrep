@@ -37,6 +37,9 @@ export function useChat() {
     const token = localStorage.getItem('ep_token');
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
+    let fullContent = '';
+    let sources = [];
+
     try {
       const controller = new AbortController();
       abortRef.current = controller;
@@ -57,8 +60,6 @@ export function useChat() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let fullContent = '';
-      let sources = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -69,10 +70,11 @@ export function useChat() {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (line.startsWith('event:')) continue;
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('event:') || trimmed.startsWith(':')) continue;
 
-          if (line.startsWith('data:')) {
-            const dataStr = line.slice(5).trim();
+          if (trimmed.startsWith('data:')) {
+            const dataStr = trimmed.slice(5).trim();
             if (!dataStr) continue;
 
             try {
@@ -112,15 +114,13 @@ export function useChat() {
       }];
       updateActiveMessages(finalMessages);
 
-      // Persist both messages to database
-      await saveMessage(chatId, 'user', question);
-      await saveMessage(chatId, 'ai', fullContent, sources.length > 0 ? sources : null);
-
     } catch (err) {
       if (err.name !== 'AbortError') {
+        console.error('[Chat] Streaming error:', err);
+        const errorContent = `Error: ${err.message}. Make sure the backend server is running.`;
         const errorMessages = [...updatedMessages.slice(0, -1), {
           ...aiMsg,
-          content: `Error: ${err.message}. Make sure the backend server is running.`,
+          content: fullContent || errorContent,
           sources: [],
         }];
         updateActiveMessages(errorMessages);
@@ -128,6 +128,25 @@ export function useChat() {
     } finally {
       setIsStreaming(false);
       abortRef.current = null;
+
+      // Always persist messages to database (even after errors)
+      console.log('[Chat] Saving messages. chatId:', chatId, 'fullContent length:', fullContent.length, 'fullContent preview:', fullContent.slice(0, 100));
+
+      try {
+        console.log('[Chat] Saving user message...');
+        await saveMessage(chatId, 'user', question);
+        console.log('[Chat] User message saved ✓');
+
+        if (fullContent) {
+          console.log('[Chat] Saving AI message...');
+          await saveMessage(chatId, 'ai', fullContent, sources.length > 0 ? sources : null);
+          console.log('[Chat] AI message saved ✓');
+        } else {
+          console.warn('[Chat] fullContent is EMPTY — skipping AI message save!');
+        }
+      } catch (saveErr) {
+        console.error('[Chat] Failed to persist messages:', saveErr);
+      }
     }
   }, [activeChatId, createNewChat, messages, updateActiveMessages, saveMessage, selectedDocIds]);
 
@@ -139,3 +158,4 @@ export function useChat() {
 
   return { messages, isStreaming, sendMessage, stopStreaming };
 }
+

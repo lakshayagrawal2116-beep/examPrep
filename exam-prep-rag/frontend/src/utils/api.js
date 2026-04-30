@@ -102,8 +102,9 @@ export async function deleteSession(sessionId) {
     headers: { ...getAuthHeaders() },
   });
   handleUnauthorized(res);
-  if (!res.ok) throw new Error('Failed to delete session');
-  return res.json();
+  // 404 is fine — session already deleted
+  if (!res.ok && res.status !== 404) throw new Error('Failed to delete session');
+  return res.json().catch(() => ({ message: 'Deleted' }));
 }
 
 export async function addMessage(sessionId, role, content, sourcesJson = null) {
