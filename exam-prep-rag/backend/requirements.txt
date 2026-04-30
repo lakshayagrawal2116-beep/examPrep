@@ -1,0 +1,17 @@
+fastapi[standard]
+uvicorn[standard]
+python-multipart
+langchain
+langchain-google-genai
+langchain-chroma
+langchain-text-splitters
+chromadb
+pymupdf
+python-dotenv
+pydantic
+pydantic-settings
+sse-starlette
+sqlalchemy
+psycopg2-binary
+bcrypt
+python-jose[cryptography]
