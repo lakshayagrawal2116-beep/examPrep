@@ -1,16 +1,18 @@
 """Chat router — SSE streaming RAG responses."""
 
 import json
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sse_starlette.sse import EventSourceResponse
 from app.models.schemas import ChatRequest
 from app.services import rag_service
+from app.services.auth_service import get_current_user
+from app.models.db_models import User
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 @router.post("/query")
-async def query(request: ChatRequest):
+async def query(request: ChatRequest, current_user: User = Depends(get_current_user)):
     """
     Send a question and receive a streaming response via Server-Sent Events.
 
@@ -25,6 +27,7 @@ async def query(request: ChatRequest):
             question=request.question,
             doc_ids=request.doc_ids if request.doc_ids else None,
             chat_history=request.chat_history,
+            user_id=current_user.id,
         ):
             event_type = event.get("type", "token")
 

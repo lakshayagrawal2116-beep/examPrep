@@ -56,6 +56,7 @@ def add_documents(chunks: list[Document]) -> int:
 def search(
     query: str,
     doc_ids: list[str] | None = None,
+    user_id: str | None = None,
     k: int = 5
 ) -> list[Document]:
     """
@@ -64,6 +65,7 @@ def search(
     Args:
         query: The search query.
         doc_ids: Optional list of document IDs to filter by.
+        user_id: Optional user ID to scope search to a specific user's documents.
         k: Number of results to return.
 
     Returns:
@@ -74,7 +76,19 @@ def search(
     search_kwargs = {"k": k}
 
     if doc_ids:
-        search_kwargs["filter"] = {"doc_id": {"$in": doc_ids}}
+        # Filter by specific documents
+        if user_id:
+            search_kwargs["filter"] = {
+                "$and": [
+                    {"doc_id": {"$in": doc_ids}},
+                    {"user_id": user_id},
+                ]
+            }
+        else:
+            search_kwargs["filter"] = {"doc_id": {"$in": doc_ids}}
+    elif user_id:
+        # No specific docs — filter by user only
+        search_kwargs["filter"] = {"user_id": user_id}
 
     results = store.similarity_search(query, **search_kwargs)
     return results
@@ -122,3 +136,64 @@ def get_chunk_count(doc_id: str) -> int:
     store = get_vector_store()
     results = store.get(where={"doc_id": doc_id})
     return len(results["ids"]) if results and results["ids"] else 0
+
+
+def is_empty() -> bool:
+    """Check if the vector store has any documents."""
+    store = get_vector_store()
+    results = store.get(limit=1)
+    return not results or not results["ids"]
+
+
+def rebuild_from_postgres():
+    """
+    Rebuild ChromaDB from chunks stored in PostgreSQL.
+
+    This runs on startup to handle Render's ephemeral filesystem —
+    if ChromaDB is empty but PostgreSQL has chunks, re-index everything.
+    """
+    from app.database import SessionLocal
+    from app.models.db_models import DocumentChunk
+
+    if not is_empty():
+        print("[REINDEX] ChromaDB already has data — skipping rebuild.")
+        return
+
+    db = SessionLocal()
+    try:
+        all_chunks = db.query(DocumentChunk).all()
+
+        if not all_chunks:
+            print("[REINDEX] No chunks in PostgreSQL — nothing to rebuild.")
+            return
+
+        print(f"[REINDEX] ChromaDB is empty! Rebuilding from {len(all_chunks)} chunks in PostgreSQL...")
+
+        # Convert DB rows to LangChain Documents and batch-add
+        batch_size = 50
+        lc_docs = []
+        for chunk in all_chunks:
+            lc_doc = Document(
+                page_content=chunk.content,
+                metadata={
+                    "doc_id": chunk.document_id,
+                    "doc_name": chunk.doc_name,
+                    "page_num": chunk.page_num,
+                    "user_id": chunk.user_id,
+                },
+            )
+            lc_docs.append(lc_doc)
+
+        # Add in batches to avoid overwhelming the embedding API
+        for i in range(0, len(lc_docs), batch_size):
+            batch = lc_docs[i : i + batch_size]
+            add_documents(batch)
+            print(f"[REINDEX] Indexed batch {i // batch_size + 1} ({len(batch)} chunks)")
+
+        print(f"[REINDEX] ✅ Successfully rebuilt ChromaDB with {len(lc_docs)} chunks!")
+
+    except Exception as e:
+        print(f"[REINDEX] ❌ Failed to rebuild ChromaDB: {e}")
+    finally:
+        db.close()
+

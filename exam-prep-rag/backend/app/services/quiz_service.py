@@ -42,14 +42,15 @@ def _escape_braces(text: str) -> str:
     return text.replace("{", "{{").replace("}", "}}")
 
 
-async def generate_quiz(topic: str, difficulty: str, num_questions: int, doc_ids: list[str] = None) -> list[QuizQuestionModel]:
+async def generate_quiz(topic: str, difficulty: str, num_questions: int, doc_ids: list[str] = None, user_id: str = None) -> list[QuizQuestionModel]:
     """Generate a list of multiple choice questions."""
     
-    # Step 1: Retrieve context
+    # Step 1: Retrieve context (user-scoped)
     search_query = topic if topic else "key concepts and summaries"
     docs = vector_service.search(
         query=search_query,
         doc_ids=doc_ids,
+        user_id=user_id,
         k=10
     )
     

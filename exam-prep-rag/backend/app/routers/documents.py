@@ -9,7 +9,7 @@ from app.config import settings
 from app.services import pdf_service, vector_service
 from app.services.auth_service import get_current_user
 from app.database import get_db
-from app.models.db_models import User, Document
+from app.models.db_models import User, Document, DocumentChunk
 from app.models.schemas import DocumentResponse, DocumentListResponse, UploadResponse
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -66,7 +66,7 @@ async def upload_document(
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
 
-    # Save to database
+    # Save document record to database
     doc_record = Document(
         id=doc_id,
         user_id=current_user.id,
@@ -76,6 +76,18 @@ async def upload_document(
         chunk_count=chunk_count,
     )
     db.add(doc_record)
+
+    # Persist chunks to PostgreSQL so ChromaDB can be rebuilt after Render restarts
+    for chunk in chunks:
+        db_chunk = DocumentChunk(
+            document_id=doc_id,
+            user_id=current_user.id,
+            doc_name=file.filename,
+            page_num=chunk.metadata.get("page_num", 0),
+            content=chunk.page_content,
+        )
+        db.add(db_chunk)
+
     db.commit()
 
     return UploadResponse(

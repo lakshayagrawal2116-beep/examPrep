@@ -31,7 +31,8 @@ async def generate_quiz(
             topic=request.topic,
             difficulty=request.difficulty,
             num_questions=request.num_questions,
-            doc_ids=request.doc_ids
+            doc_ids=request.doc_ids,
+            user_id=current_user.id,
         )
         
         if not questions:

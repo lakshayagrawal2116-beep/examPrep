@@ -60,6 +60,7 @@ async def query_stream(
     question: str,
     doc_ids: list[str] = None,
     chat_history: list[dict] = None,
+    user_id: str = None,
 ) -> AsyncGenerator[dict, None]:
     """
     Stream a RAG response for the given question.
@@ -73,12 +74,14 @@ async def query_stream(
         question: The user's question.
         doc_ids: Optional document IDs to filter search.
         chat_history: Optional conversation history.
+        user_id: The current user's ID to scope vector search.
     """
     try:
-        # Step 1: Retrieve relevant documents
+        # Step 1: Retrieve relevant documents (user-scoped)
         docs = vector_service.search(
             query=question,
             doc_ids=doc_ids if doc_ids else None,
+            user_id=user_id,
             k=5
         )
 

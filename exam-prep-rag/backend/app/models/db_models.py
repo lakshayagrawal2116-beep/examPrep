@@ -67,6 +67,7 @@ class Document(Base):
 
     # Relationships
     user = relationship("User", back_populates="documents")
+    chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
 
 
 class Quiz(Base):
@@ -99,3 +100,20 @@ class QuizQuestion(Base):
 
     # Relationships
     quiz = relationship("Quiz", back_populates="questions")
+
+
+class DocumentChunk(Base):
+    """Persists document chunks in PostgreSQL so ChromaDB can be rebuilt after Render restarts."""
+    __tablename__ = "document_chunks"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String, nullable=False, index=True)
+    doc_name = Column(String(255), nullable=False)
+    page_num = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    document = relationship("Document", back_populates="chunks")
+

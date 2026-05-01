@@ -20,8 +20,11 @@ async def lifespan(app: FastAPI):
     init_db()
 
     # Initialize vector store on startup
-    from app.services.vector_service import get_vector_store
+    from app.services.vector_service import get_vector_store, rebuild_from_postgres
     get_vector_store()
+
+    # Rebuild ChromaDB from PostgreSQL if filesystem was wiped (Render deploys)
+    rebuild_from_postgres()
 
     print("[OK] ExamPrep RAG backend started successfully!")
     print(f"[DB] Database connected")
