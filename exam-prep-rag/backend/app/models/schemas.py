@@ -63,9 +63,32 @@ class QuizQuestionModel(BaseModel):
     explanation: str
 
 
-class QuizQuestionResponse(QuizQuestionModel):
-    """Question model returned to frontend — includes the database ID."""
+class QuizQuestionPublicResponse(BaseModel):
+    """Question sent to client during an active quiz — no answers or explanations."""
     id: str
+    question_text: str
+    options: list[str]
+
+
+class QuizCheckAnswerRequest(BaseModel):
+    """Check a single answer during study mode (before final submit)."""
+    user_answer: str
+
+
+class QuizCheckAnswerResponse(BaseModel):
+    """Immediate feedback only — no answer or explanation until quiz is submitted."""
+    is_correct: bool
+
+
+class QuizQuestionReview(BaseModel):
+    """Full question breakdown — only after quiz is submitted or from history."""
+    id: str
+    question_text: str
+    options: list[str]
+    user_answer: str | None = None
+    correct_answer: str
+    explanation: str
+    is_correct: bool | None = None
 
 
 class QuizGenerateResponse(BaseModel):
@@ -73,7 +96,7 @@ class QuizGenerateResponse(BaseModel):
     quiz_id: str
     topic: str
     difficulty: str
-    questions: list[QuizQuestionResponse]
+    questions: list[QuizQuestionPublicResponse]
 
 
 class QuizSubmitAnswer(BaseModel):
@@ -92,6 +115,18 @@ class QuizSubmitResponse(BaseModel):
     score: int
     total_questions: int
     message: str
+    review: list[QuizQuestionReview] = []
+
+
+class QuizDetailResponse(BaseModel):
+    """Completed quiz with full review (history / results screen)."""
+    id: str
+    topic: str
+    difficulty: str
+    score: int
+    total_questions: int
+    created_at: str
+    questions: list[QuizQuestionReview]
 
 
 class QuizHistoryItem(BaseModel):

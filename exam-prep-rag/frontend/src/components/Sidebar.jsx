@@ -49,7 +49,7 @@ export default function Sidebar() {
           style={{ width: '100%' }}
           onClick={() => setUploadModalOpen(true)}
         >
-          Upload PDF
+          Upload Document
         </button>
       </div>
 

@@ -138,3 +138,53 @@ export async function addMessage(sessionId, role, content, sourcesJson = null) {
   if (!res.ok) throw new Error('Failed to save message');
   return res.json();
 }
+
+// ---------- Quiz API ----------
+
+async function parseQuizError(res, fallback) {
+  const err = await res.json().catch(() => ({}));
+  throw new Error(parseErrorDetail(err.detail, fallback));
+}
+
+export async function checkQuizAnswer(quizId, questionId, userAnswer) {
+  const res = await fetch(
+    `${API_BASE}/api/quiz/${quizId}/questions/${questionId}/check`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ user_answer: userAnswer }),
+    }
+  );
+  handleUnauthorized(res);
+  if (!res.ok) await parseQuizError(res, 'Failed to check answer');
+  return res.json();
+}
+
+export async function submitQuiz(quizId, answers) {
+  const res = await fetch(`${API_BASE}/api/quiz/${quizId}/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ answers }),
+  });
+  handleUnauthorized(res);
+  if (!res.ok) await parseQuizError(res, 'Failed to submit quiz');
+  return res.json();
+}
+
+export async function getQuizHistory() {
+  const res = await fetch(`${API_BASE}/api/quiz/history`, {
+    headers: { ...getAuthHeaders() },
+  });
+  handleUnauthorized(res);
+  if (!res.ok) throw new Error('Failed to load quiz history');
+  return res.json();
+}
+
+export async function getQuizDetail(quizId) {
+  const res = await fetch(`${API_BASE}/api/quiz/${quizId}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  handleUnauthorized(res);
+  if (!res.ok) await parseQuizError(res, 'Failed to load quiz');
+  return res.json();
+}

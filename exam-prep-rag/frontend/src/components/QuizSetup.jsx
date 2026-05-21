@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import QuizHistory from './QuizHistory';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export default function QuizSetup({ onStart }) {
+export default function QuizSetup({ onStart, onViewHistory, loadingHistory }) {
   const { documents, selectedDocIds } = useApp();
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState('Medium');
@@ -152,6 +153,11 @@ export default function QuizSetup({ onStart }) {
             )}
           </button>
         </form>
+
+        <QuizHistory onSelectQuiz={onViewHistory} />
+        {loadingHistory && (
+          <p className="quiz-help">Opening quiz review...</p>
+        )}
       </div>
     </div>
   );
