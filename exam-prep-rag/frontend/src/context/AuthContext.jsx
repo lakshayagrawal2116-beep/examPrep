@@ -3,72 +3,108 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext(null);
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+function parseAuthError(detail, fallback) {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d) => d.msg || d.message || JSON.stringify(d)).join('. ');
+  }
+  return fallback;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('ep_token'));
   const [loading, setLoading] = useState(true);
 
-  // On mount, verify stored token
+  // On page load only: validate a stored token (skip right after login/signup)
   useEffect(() => {
-    if (token) {
-      fetch(`${API_BASE}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then(r => {
-          if (!r.ok) throw new Error('Invalid token');
-          return r.json();
-        })
-        .then(data => {
-          setUser(data);
-          setLoading(false);
-        })
-        .catch(() => {
-          localStorage.removeItem('ep_token');
-          setToken(null);
-          setUser(null);
-          setLoading(false);
-        });
-    } else {
+    if (!token) {
       setLoading(false);
+      return;
     }
-  }, [token]);
-
-  const login = async (email, password) => {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Login failed');
+    if (user) {
+      setLoading(false);
+      return;
     }
 
-    const data = await res.json();
+    fetch(`${API_BASE}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error('Invalid token');
+        return r.json();
+      })
+      .then((data) => {
+        setUser(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        localStorage.removeItem('ep_token');
+        setToken(null);
+        setUser(null);
+        setLoading(false);
+      });
+  }, [token, user]);
+
+  const applyAuthSession = (data) => {
     localStorage.setItem('ep_token', data.token);
-    setToken(data.token);
     setUser(data.user);
+    setToken(data.token);
+    setLoading(false);
     return data.user;
   };
 
-  const signup = async (email, password, name) => {
-    const res = await fetch(`${API_BASE}/api/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name }),
-    });
+  const login = async (email, password) => {
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+        }),
+      });
+    } catch {
+      throw new Error(
+        `Cannot reach the server at ${API_BASE}. Start the backend with: uvicorn app.main:app --reload`
+      );
+    }
 
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Signup failed');
+      const err = await res.json().catch(() => ({}));
+      throw new Error(parseAuthError(err.detail, 'Login failed'));
     }
 
     const data = await res.json();
-    localStorage.setItem('ep_token', data.token);
-    setToken(data.token);
-    setUser(data.user);
-    return data.user;
+    return applyAuthSession(data);
+  };
+
+  const signup = async (email, password, name) => {
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+          name: name.trim(),
+        }),
+      });
+    } catch {
+      throw new Error(
+        `Cannot reach the server at ${API_BASE}. Start the backend with: uvicorn app.main:app --reload`
+      );
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(parseAuthError(err.detail, 'Signup failed'));
+    }
+
+    const data = await res.json();
+    return applyAuthSession(data);
   };
 
   const logout = () => {

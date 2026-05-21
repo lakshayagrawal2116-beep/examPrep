@@ -3,6 +3,12 @@ import { uploadDocument as apiUpload, deleteDocument as apiDelete } from '../uti
 import { useApp } from '../context/AppContext';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const SUPPORTED_EXTENSIONS = ['pdf', 'docx', 'pptx', 'txt'];
+
+function getExtension(filename) {
+  const parts = filename.toLowerCase().split('.');
+  return parts.length > 1 ? parts.pop() : '';
+}
 
 export function useDocuments() {
   const { refreshDocuments } = useApp();
@@ -16,8 +22,12 @@ export function useDocuments() {
     setUploadStatus(null);
 
     // Client-side validation
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setUploadStatus({ type: 'error', message: 'Only PDF files are supported.' });
+    const ext = getExtension(file.name);
+    if (!SUPPORTED_EXTENSIONS.includes(ext)) {
+      setUploadStatus({
+        type: 'error',
+        message: 'Unsupported file type. Please upload PDF, DOCX, PPTX, or TXT.',
+      });
       setUploading(false);
       return;
     }
@@ -30,7 +40,7 @@ export function useDocuments() {
     }
 
     if (file.size === 0) {
-      setUploadStatus({ type: 'error', message: 'File is empty. Please select a valid PDF.' });
+      setUploadStatus({ type: 'error', message: 'File is empty. Please select a valid document.' });
       setUploading(false);
       return;
     }
@@ -46,12 +56,14 @@ export function useDocuments() {
       let message = err.message || 'Upload failed';
 
       // Provide helpful error messages
-      if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+      if (message.includes('Failed to fetch') || message.includes('NetworkError') || message.includes('Cannot reach the server')) {
         message = 'Connection failed. Please check if the backend server is running.';
+      } else if (message.includes('signed in')) {
+        message = 'Please sign in again to upload documents.';
       } else if (message.includes('401') || message.includes('Unauthorized')) {
         message = 'Session expired. Please log in again.';
-      } else if (message.includes('413')) {
-        message = 'File is too large for the server. Try a smaller PDF.';
+      } else if (message.includes('413') || message.includes('too large')) {
+        message = 'File is too large. Maximum size is 50MB.';
       }
 
       setUploadStatus({ type: 'error', message });
@@ -67,10 +79,10 @@ export function useDocuments() {
       await refreshDocuments();
     } catch (err) {
       console.error('Delete failed:', err);
-      throw new Error(err.message?.includes('Failed to fetch')
+      const msg = err.message?.includes('Failed to fetch')
         ? 'Connection failed. Please check the backend server.'
-        : 'Failed to delete document. Please try again.'
-      );
+        : 'Failed to delete document. Please try again.';
+      throw new Error(msg, { cause: err });
     }
   }, [refreshDocuments]);
 

@@ -60,7 +60,14 @@ export function AppProvider({ children }) {
   async function loadSessionMessages(sessionId) {
     try {
       const data = await apiGetSession(sessionId);
-      setActiveMessages(data.messages || []);
+      const messages = (data.messages || []).map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        sources: m.sources || [],
+        timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
+      }));
+      setActiveMessages(messages);
     } catch (err) {
       console.error('Failed to load session:', err);
       setActiveMessages([]);

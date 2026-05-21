@@ -94,7 +94,7 @@ export default function ChatWindow() {
         ) : (
           <>
             {messages.map((msg, i) => (
-              <MessageBubble key={i} message={msg} />
+              <MessageBubble key={msg.id || `msg-${i}-${msg.timestamp}`} message={msg} />
             ))}
             {isStreaming && messages[messages.length - 1]?.content === '' && (
               <LoadingIndicator />

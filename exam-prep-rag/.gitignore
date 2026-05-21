@@ -18,6 +18,10 @@ frontend/dist/
 # ChromaDB data
 backend/chroma_db/
 
+# SQLite database (contains user accounts — never commit)
+backend/examprep.db
+backend/*.db
+
 # Uploaded files
 backend/uploads/
 

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
 import Sidebar from './components/Sidebar';
@@ -114,22 +116,36 @@ function App() {
   }, []);
 
   if (showWakeUp && !serverReady) {
-    return <ServerWakeUp onReady={handleReady} />;
+    return (
+      <ThemeProvider>
+        <ToastProvider>
+          <ServerWakeUp onReady={handleReady} />
+        </ToastProvider>
+      </ThemeProvider>
+    );
   }
 
   if (!serverReady) {
     // Brief initial check in progress — show minimal loading
     return (
-      <div className="auth-loading">
-        <div className="auth-loading-spinner" />
-      </div>
+      <ThemeProvider>
+        <ToastProvider>
+          <div className="auth-loading">
+            <div className="auth-loading-spinner" />
+          </div>
+        </ToastProvider>
+      </ThemeProvider>
     );
   }
 
   return (
-    <AuthProvider>
-      <AuthGate />
-    </AuthProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
 

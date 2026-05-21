@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useDocuments } from '../hooks/useDocuments';
 import DocSelector from './DocSelector';
+import ThemeToggle from './ThemeToggle';
 
 export default function Header() {
   const { documents, selectedDocIds, setSelectedDocIds, setSidebarOpen, setUploadModalOpen } = useApp();
@@ -53,10 +54,12 @@ export default function Header() {
           compact={false}
         />
 
+        <ThemeToggle />
+
         <button
           className="header-upload-btn"
           onClick={() => setUploadModalOpen(true)}
-          title="Upload PDF"
+          title="Upload document (PDF, DOCX, PPTX, TXT)"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M8 2v12M2 8h12" />

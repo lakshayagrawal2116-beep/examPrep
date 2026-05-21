@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from app.database import get_db
 from app.models.db_models import User
 from app.services.auth_service import (
@@ -36,23 +36,26 @@ class UserResponse(BaseModel):
 
 @router.post("/signup", response_model=AuthResponse)
 def signup(req: SignupRequest, db: Session = Depends(get_db)):
+    email = req.email.lower().strip()
+    password = req.password.strip()
+
     # Check if email already exists
-    existing = db.query(User).filter(User.email == req.email.lower().strip()).first()
+    existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists",
         )
 
-    if len(req.password) < 6:
+    if len(password) < 6:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 6 characters",
         )
 
     user = User(
-        email=req.email.lower().strip(),
-        password_hash=hash_password(req.password),
+        email=email,
+        password_hash=hash_password(password),
         name=req.name.strip(),
     )
     db.add(user)
@@ -69,12 +72,19 @@ def signup(req: SignupRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=AuthResponse)
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == req.email.lower().strip()).first()
+    email = req.email.lower().strip()
+    password = req.password.strip()
+    user = db.query(User).filter(User.email == email).first()
 
-    if not user or not verify_password(req.password, user.password_hash):
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="No account found for this email. Please sign up first.",
+        )
+    if not verify_password(password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password. Check for extra spaces or create a new account if the database was reset.",
         )
 
     token = create_access_token(user.id, user.email)

@@ -3,12 +3,16 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { useToast } from '../context/ToastContext';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function QuizSession({ quiz, onFinish }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState({}); // Mapping of index -> user selected option string
   const [showExplanation, setShowExplanation] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const toast = useToast();
 
   const currentQuestion = quiz.questions[currentIndex];
   const isAnswered = answers[currentIndex] !== undefined;
@@ -33,7 +37,7 @@ export default function QuizSession({ quiz, onFinish }) {
         user_answer: answers[idx] || ''
       }));
 
-      const response = await fetch(`http://localhost:8000/api/quiz/${quiz.quiz_id}/submit`, {
+      const response = await fetch(`${API_BASE}/api/quiz/${quiz.quiz_id}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,7 +52,17 @@ export default function QuizSession({ quiz, onFinish }) {
       onFinish(result);
     } catch (err) {
       console.error(err);
-      alert('Failed to submit quiz scores.');
+      // Calculate score client-side as fallback
+      let clientScore = 0;
+      quiz.questions.forEach((q, idx) => {
+        if (answers[idx] === q.correct_answer) clientScore++;
+      });
+      toast.warning('Could not save results to server. Showing local score.');
+      onFinish({
+        score: clientScore,
+        total_questions: quiz.questions.length,
+        message: 'Scored locally (server unavailable)'
+      });
     } finally {
       setSubmitting(false);
     }

@@ -1,5 +1,6 @@
 """Chat history router — CRUD for sessions and messages."""
 
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -170,6 +171,9 @@ def add_message(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    if req.role not in ("user", "ai"):
+        raise HTTPException(status_code=400, detail="Role must be 'user' or 'ai'.")
+
     msg = ChatMessage(
         session_id=session_id,
         role=req.role,
@@ -182,6 +186,7 @@ def add_message(
     if req.role == "user" and session.title == "New Chat":
         session.title = req.content[:50] + ("..." if len(req.content) > 50 else "")
 
+    session.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(msg)
 

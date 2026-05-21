@@ -1,12 +1,14 @@
 import { useRef, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useDocuments } from '../hooks/useDocuments';
+import { useToast } from '../context/ToastContext';
 
 export default function FileUpload() {
   const { uploadModalOpen, setUploadModalOpen, documents } = useApp();
   const { upload, uploading, uploadProgress, uploadStatus, resetUploadStatus } = useDocuments();
   const fileRef = useRef(null);
   const [dragover, setDragover] = useState(false);
+  const toast = useToast();
 
   // Auto-close modal 1.5s after successful upload
   useEffect(() => {
@@ -28,14 +30,16 @@ export default function FileUpload() {
 
   const handleFile = async (file) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      alert('Please select a PDF file.');
+    const ext = file.name.toLowerCase().split('.').pop();
+    const supported = ['pdf', 'docx', 'pptx', 'txt'];
+    if (!supported.includes(ext)) {
+      toast.warning('Unsupported file type. Please upload PDF, DOCX, PPTX, or TXT.');
       return;
     }
     try {
       await upload(file);
-    } catch (e) {
-      // handled by hook
+    } catch {
+      // Error state is set by useDocuments hook
     }
   };
 
@@ -63,7 +67,7 @@ export default function FileUpload() {
             </div>
             <div>
               <h2>Upload Study Material</h2>
-              <p className="upload-modal-subtitle">PDF files up to 50MB supported</p>
+              <p className="upload-modal-subtitle">PDF, DOCX, PPTX, TXT files supported (up to 50MB)</p>
             </div>
           </div>
           <button className="upload-modal-close" onClick={handleClose}>
@@ -83,7 +87,7 @@ export default function FileUpload() {
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf"
+            accept=".pdf,.docx,.pptx,.txt"
             style={{ display: 'none' }}
             onChange={(e) => { handleFile(e.target.files[0]); e.target.value = ''; }}
           />
@@ -104,7 +108,7 @@ export default function FileUpload() {
               <div className="upload-spinner">
                 <div className="upload-spinner-ring" />
               </div>
-              <h3>Processing your PDF...</h3>
+              <h3>Processing your document...</h3>
               <p>Extracting text and creating embeddings</p>
               <div className="upload-progress-bar">
                 <div className="upload-progress-fill" style={{ width: `${uploadProgress}%` }} />
@@ -119,10 +123,13 @@ export default function FileUpload() {
                   <line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
               </div>
-              <h3>Drop your PDF here</h3>
+              <h3>Drop your file here</h3>
               <p>or click anywhere to browse files</p>
               <div className="upload-file-types">
                 <span className="upload-file-badge">.PDF</span>
+                <span className="upload-file-badge">.DOCX</span>
+                <span className="upload-file-badge">.PPTX</span>
+                <span className="upload-file-badge">.TXT</span>
               </div>
             </div>
           )}

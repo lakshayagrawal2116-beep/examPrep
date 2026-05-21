@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export default function QuizSetup({ onStart }) {
   const { documents, selectedDocIds } = useApp();
   const [topic, setTopic] = useState('');
@@ -31,7 +33,7 @@ export default function QuizSetup({ onStart }) {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/quiz/generate', {
+      const response = await fetch(`${API_BASE}/api/quiz/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -46,8 +48,14 @@ export default function QuizSetup({ onStart }) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to generate quiz');
+        const errorData = await response.json().catch(() => ({}));
+        const detail = errorData.detail;
+        const msg = typeof detail === 'string'
+          ? detail
+          : Array.isArray(detail)
+            ? detail.map((d) => d.msg || d.message).join('. ')
+            : 'Failed to generate quiz';
+        throw new Error(msg);
       }
 
       const generatedQuiz = await response.json();

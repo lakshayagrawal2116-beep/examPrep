@@ -1,3 +1,5 @@
+import ThemeToggle from './ThemeToggle';
+
 export default function LandingPage({ onSignIn, onSignUp }) {
   return (
     <div className="landing">
@@ -22,6 +24,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
             <span>ExamPrep AI</span>
           </div>
           <div className="landing-nav-actions">
+            <ThemeToggle />
             <button className="landing-btn-ghost" onClick={onSignIn}>Sign In</button>
             <button className="landing-btn-primary" onClick={onSignUp}>Sign Up</button>
           </div>

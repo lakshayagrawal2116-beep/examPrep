@@ -7,28 +7,49 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
+/** Normalize FastAPI error detail (string or validation array). */
+function parseErrorDetail(detail, fallback = 'Request failed') {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d) => d.msg || d.message || JSON.stringify(d)).join('. ');
+  }
+  return fallback;
+}
+
 /** Handle 401 — auto logout */
 function handleUnauthorized(res) {
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 403) {
     localStorage.removeItem('ep_token');
     window.location.reload();
   }
 }
 
 export async function uploadDocument(file) {
+  const token = localStorage.getItem('ep_token');
+  if (!token) {
+    throw new Error('You must be signed in to upload documents.');
+  }
+
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(`${API_BASE}/api/documents/upload`, {
-    method: 'POST',
-    headers: { ...getAuthHeaders() },
-    body: formData,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/api/documents/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the server at ${API_BASE}. Make sure the backend is running.`
+    );
+  }
 
   handleUnauthorized(res);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
-    throw new Error(err.detail || 'Upload failed');
+    throw new Error(parseErrorDetail(err.detail, 'Upload failed'));
   }
 
   return res.json();
