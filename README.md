@@ -125,7 +125,7 @@ exam-prep-rag/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/exam-prep-rag.git
+git clone https://github.com/lakshayagrawal2116-beep/exam-prep-rag.git
 cd exam-prep-rag
 ```
 
